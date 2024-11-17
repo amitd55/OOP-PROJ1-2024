@@ -34,7 +34,7 @@ public class GameLogic implements PlayableLogic {
         board[3][4] = new SimpleDisc(player2);
         board[4][3] = new SimpleDisc(player2);
         board[4][4] = new SimpleDisc(player1);
-        currentPlayer = player1;
+        setPlayers(Player player1, Player player2);
     }
 
     private boolean isValidPosition(int row, int col) {
@@ -335,7 +335,6 @@ public class GameLogic implements PlayableLogic {
         this.player1 = player1;
         this.player2 = player2;
         currentPlayer = player1;
-        initializeBoard();
     }
 
     @Override
