@@ -34,7 +34,10 @@ public class GameLogic implements PlayableLogic {
         board[3][4] = new SimpleDisc(player2);
         board[4][3] = new SimpleDisc(player2);
         board[4][4] = new SimpleDisc(player1);
-        setPlayers(Player player1, Player player2);
+        currentPlayer = player1;
+         player1.reset_bombs_and_unflippedable();
+        player2.reset_bombs_and_unflippedable();
+
     }
 
     private boolean isValidPosition(int row, int col) {
