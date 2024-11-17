@@ -355,38 +355,35 @@ public class GameLogic implements PlayableLogic {
         initializeBoard();
     }
 
-    @Override
     public void undoLastMove() {
         if (!moveHistory.isEmpty()) {
             Move lastMove = moveHistory.pop();
-            int row = lastMove.getPosition().getRow();
-            int col = lastMove.getPosition().getCol();
-            Disc lastDisc = board[row][col];
-            board[row][col] = null;
-
-            if (lastDisc instanceof BombDisc) {
-                if (lastDisc.getOwner() == player1) {
+            // Restore the board to the saved snapshot if available
+            if (lastMove.getBoardSnapshot() != null) {
+                restoreBoardFromSnapshot(lastMove.getBoardSnapshot());
+            }
+            Disc placedDisc = lastMove.getPlacedDisc();
+            if (placedDisc instanceof BombDisc) {
+                if (placedDisc.getOwner() == player1) {
                     player1.reduce_bomb();
                 } else {
                     player2.reduce_bomb();
                 }
-            } else if (lastDisc instanceof UnflippableDisc) {
-                if (lastDisc.getOwner() == player1) {
+            } else if (placedDisc instanceof UnflippableDisc) {
+                if (placedDisc.getOwner() == player1) {
                     player1.reduce_unflippedable();
                 } else {
                     player2.reduce_unflippedable();
                 }
             }
-
-            // Restore the flipped discs to their previous owner
-            for (Position pos : lastMove.getFlippedPositions()) {
-                Disc flippedDisc = board[pos.getRow()][pos.getCol()];
-                flippedDisc.setOwner((currentPlayer == player1) ? player2 : player1);
-            }
-
-            // Switch back to the player who made the undone move
             switchTurn();
         }
     }
-
+    private void restoreBoardFromSnapshot(Disc[][] snapshot) {
+        for (int i = 0; i < board.length; i++) {
+            for (int j = 0; j < board[i].length; j++) {
+                board[i][j] = snapshot[i][j];
+            }
+        }
+    }
 }
