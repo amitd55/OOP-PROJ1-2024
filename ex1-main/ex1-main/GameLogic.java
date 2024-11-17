@@ -6,13 +6,7 @@ public class GameLogic implements PlayableLogic {
     private Player player2;
     private Stack<Move> moveHistory = new Stack<>();
     private Player currentPlayer;
-    private int player1BombsUsed = 0;
-    private int player2BombsUsed = 0;
-    private int player1UnflippablesUsed = 0;
-    private int player2UnflippablesUsed = 0;
-    private static final int MAX_UNFLIPPABLES = 2;
 
-    private static final int MAX_BOMBS = 3;
 
     private final int[][] DIRECTIONS = {
             {-1, 0}, {1, 0}, {0, -1}, {0, 1},  // Vertical and Horizontal
@@ -34,9 +28,9 @@ public class GameLogic implements PlayableLogic {
         board[3][4] = new SimpleDisc(player2);
         board[4][3] = new SimpleDisc(player2);
         board[4][4] = new SimpleDisc(player1);
-        currentPlayer = player1;
-         player1.reset_bombs_and_unflippedable();
+        player1.reset_bombs_and_unflippedable();
         player2.reset_bombs_and_unflippedable();
+        currentPlayer = player1;
 
     }
 
@@ -111,33 +105,7 @@ public class GameLogic implements PlayableLogic {
             }
         }
     }
- private void winnerCount() {
-        int countPlayer1 = 0;
-        int countPlayer2 = 0;
-        for (int row = 0; row < board.length; row++) {
-            for (int col = 0; col < board[row].length; col++) {
-                Disc disc = board[row][col];
-                if (disc != null) {
-                    if (disc.getOwner() == player1) {
-                        countPlayer1++;
-                    } else if (disc.getOwner() == player2) {
-                        countPlayer2++;
-                    }
-                }
-            }
-        }
-        int totalDiscs = countPlayer1 + countPlayer2;
-        if (countPlayer1 > countPlayer2) {
-            player1.addWin();
-            System.out.println("Player 1 wins with " + countPlayer1 + " discs! Player 2 had " + countPlayer2 + " discs.");
-        } else if (countPlayer2 > countPlayer1) {
-            player2.addWin();
-            System.out.println("Player 2 wins with " + countPlayer2 + " discs! Player 1 had " + countPlayer1 + " discs.");
-        } else {
-            System.out.println("The game is a tie! Both players have " + countPlayer1 + " discs.");
-        }
-        System.out.println("Total discs on the board: " + totalDiscs);
-    }
+
 
 
 
@@ -165,60 +133,32 @@ public class GameLogic implements PlayableLogic {
         }
         return new ArrayList<>(flippedPositions);
     }
-    private Disc copyDisc(Disc disc) {
-        if (disc instanceof SimpleDisc) {
-            return new SimpleDisc(disc.getOwner());
-        } else if (disc instanceof BombDisc) {
-            return new BombDisc(disc.getOwner());
-        } else if (disc instanceof UnflippableDisc) {
-            return new UnflippableDisc(disc.getOwner());
-        } else {
-            throw new IllegalArgumentException("Unknown Disc type");
-        }
-    }
 
-    private Disc[][] deepCopyBoard() {
-        Disc[][] copy = new Disc[board.length][board[0].length];
-        for (int i = 0; i < board.length; i++) {
-            for (int j = 0; j < board[i].length; j++) {
-                copy[i][j] = (board[i][j] != null) ? copyDisc(board[i][j]) : null;
-            }
-        }
-        return copy;
-    }
 
 
     @Override
     public boolean locate_disc(Position a, Disc disc) {
         if (disc instanceof BombDisc) {
-            if ((currentPlayer == player1 && player1BombsUsed >= MAX_BOMBS) ||
-                    (currentPlayer == player2 && player2BombsUsed >= MAX_BOMBS)) {
+            if (currentPlayer.getNumber_of_bombs() <= 0) {
                 return false;
             }
-            if (currentPlayer == player1) player1BombsUsed++;
-            else player2BombsUsed++;
+            currentPlayer.reduce_bomb();
         } else if (disc instanceof UnflippableDisc) {
-            if ((currentPlayer == player1 && player1UnflippablesUsed >= MAX_UNFLIPPABLES) ||
-                    (currentPlayer == player2 && player2UnflippablesUsed >= MAX_UNFLIPPABLES)) {
+            if (currentPlayer.getNumber_of_unflippedable() <= 0) {
                 return false;
             }
-            if (currentPlayer == player1) player1UnflippablesUsed++;
-            else player2UnflippablesUsed++;
+            currentPlayer.reduce_unflippedable();
         }
+        int row = a.getRow();
+        int col = a.getCol();
+        if (!isValidMove(row, col, disc)) return false;
 
-        if (!isValidMove(a.getRow(), a.getCol(), disc)) return false;
-
-        Disc[][] boardSnapshot = deepCopyBoard(); // Take a snapshot of the board
-        List<Position> flippedPositions = flipDiscs(a.getRow(), a.getCol(), disc);
-
-        board[a.getRow()][a.getCol()] = disc;
-        moveHistory.push(new Move(a, disc, flippedPositions, boardSnapshot));
+        board[row][col] = disc;
+        flipDiscs(row, col, disc);
+        moveHistory.push(new Move(a, disc, flipDiscs(row, col, disc)));
         switchTurn();
         return true;
     }
-
-
-
 
     @Override
     public Disc getDiscAtPosition(Position position) {
@@ -236,7 +176,6 @@ public class GameLogic implements PlayableLogic {
         for (int row = 0; row < board.length; row++) {
             for (int col = 0; col < board[0].length; col++) {
                 Position pos = new Position(row, col);
-                // Only add positions with flips > 0
                 if (isValidMove(row, col, new SimpleDisc(currentPlayer)) && countFlips(pos) > 0) {
                     validMoves.add(pos);
                 }
@@ -299,6 +238,34 @@ public class GameLogic implements PlayableLogic {
         return owners;
     }
 
+    private void winnerCount() {
+        int countPlayer1 = 0;
+        int countPlayer2 = 0;
+        for (int row = 0; row < board.length; row++) {
+            for (int col = 0; col < board[row].length; col++) {
+                Disc disc = board[row][col];
+                if (disc != null) {
+                    if (disc.getOwner() == player1) {
+                        countPlayer1++;
+                    } else if (disc.getOwner() == player2) {
+                        countPlayer2++;
+                    }
+                }
+            }
+        }
+        int totalDiscs = countPlayer1 + countPlayer2;
+        if (countPlayer1 > countPlayer2) {
+            player1.addWin();
+            System.out.println("Player 1 wins with " + countPlayer1 + " discs! Player 2 had " + countPlayer2 + " discs.");
+        } else if (countPlayer2 > countPlayer1) {
+            player2.addWin();
+            System.out.println("Player 2 wins with " + countPlayer2 + " discs! Player 1 had " + countPlayer1 + " discs.");
+        } else {
+            System.out.println("The game is a tie! Both players have " + countPlayer1 + " discs.");
+        }
+        System.out.println("Total discs on the board: " + totalDiscs);
+    }
+
     @Override
     public int countFlips(Position pos) {
         Set<Position> flippedPositions = new HashSet<>();
@@ -308,11 +275,9 @@ public class GameLogic implements PlayableLogic {
             List<Position> flippable = getFlippableDiscs(pos.getRow(), pos.getCol(), dir[0], dir[1]);
             for (Position p : flippable) {
                 Disc disc = board[p.getRow()][p.getCol()];
-                // Skip unflippable discs
                 if (disc != null && !(disc instanceof UnflippableDisc) && disc.getOwner() != currentPlayer) {
                     flippedPositions.add(p);
 
-                    // Process bombs but ensure unflippables are excluded
                     if (disc instanceof BombDisc && !processedBombs.contains(p)) {
                         simulateBombExplosion(p.getRow(), p.getCol(), flippedPositions, processedBombs);
                     }
@@ -322,6 +287,14 @@ public class GameLogic implements PlayableLogic {
 
         return flippedPositions.size();
     }
+
+
+
+
+
+
+
+
 
     @Override
     public Player getFirstPlayer() {
@@ -338,6 +311,7 @@ public class GameLogic implements PlayableLogic {
         this.player1 = player1;
         this.player2 = player2;
         currentPlayer = player1;
+        initializeBoard();
     }
 
     @Override
@@ -347,7 +321,7 @@ public class GameLogic implements PlayableLogic {
 
     @Override
     public boolean isGameFinished() {
-       boolean isBoardFull = true;
+        boolean isBoardFull = true;
         for (int row = 0; row < board.length; row++) {
             for (int col = 0; col < board[row].length; col++) {
                 if (board[row][col] == null) {
@@ -374,8 +348,10 @@ public class GameLogic implements PlayableLogic {
             Arrays.fill(board[i], null);
         }
         moveHistory.clear();
-        player1BombsUsed = 0;
-        player2BombsUsed = 0;
+        player1.reduce_bomb();
+        player2.reduce_bomb();
+        player1.reduce_unflippedable();
+        player2.reduce_unflippedable();
         initializeBoard();
     }
 
@@ -383,41 +359,34 @@ public class GameLogic implements PlayableLogic {
     public void undoLastMove() {
         if (!moveHistory.isEmpty()) {
             Move lastMove = moveHistory.pop();
-            // Restore the board to the saved snapshot if available
-            if (lastMove.getBoardSnapshot() != null) {
-                restoreBoardFromSnapshot(lastMove.getBoardSnapshot());
+            int row = lastMove.getPosition().getRow();
+            int col = lastMove.getPosition().getCol();
+            Disc lastDisc = board[row][col];
+            board[row][col] = null;
+
+            if (lastDisc instanceof BombDisc) {
+                if (lastDisc.getOwner() == player1) {
+                    player1.reduce_bomb();
+                } else {
+                    player2.reduce_bomb();
+                }
+            } else if (lastDisc instanceof UnflippableDisc) {
+                if (lastDisc.getOwner() == player1) {
+                    player1.reduce_unflippedable();
+                } else {
+                    player2.reduce_unflippedable();
+                }
             }
 
-            // Restore counters
-            Disc placedDisc = lastMove.getPlacedDisc();
-            if (placedDisc instanceof BombDisc) {
-                if (placedDisc.getOwner() == player1) {
-                    player1BombsUsed--;
-                } else {
-                    player2BombsUsed--;
-                }
-            } else if (placedDisc instanceof UnflippableDisc) {
-                if (placedDisc.getOwner() == player1) {
-                    player1UnflippablesUsed--;
-                } else {
-                    player2UnflippablesUsed--;
-                }
+            // Restore the flipped discs to their previous owner
+            for (Position pos : lastMove.getFlippedPositions()) {
+                Disc flippedDisc = board[pos.getRow()][pos.getCol()];
+                flippedDisc.setOwner((currentPlayer == player1) ? player2 : player1);
             }
 
             // Switch back to the player who made the undone move
             switchTurn();
         }
     }
-    private void restoreBoardFromSnapshot(Disc[][] snapshot) {
-        for (int i = 0; i < board.length; i++) {
-            for (int j = 0; j < board[i].length; j++) {
-                board[i][j] = snapshot[i][j];
-            }
-        }
-    }
-
-
-
-
 
 }
