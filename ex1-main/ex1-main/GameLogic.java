@@ -405,6 +405,8 @@ public class GameLogic implements PlayableLogic {
 
         for (Position flippedPos : lastMove.getFlippedPositions()) {
             Disc flippedDisc = board[flippedPos.getRow()][flippedPos.getCol()];
+            if (flippedDisc == null)
+                continue;
             System.out.println("\tUndo: flipping back " + flippedDisc.getType() + " in (" +
                     (flippedPos.getRow() + 1) + ", " + (flippedPos.getCol() + 1) + ")");
         }
